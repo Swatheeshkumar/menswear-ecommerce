@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Login | Swatheesh Menswear</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <main class="auth-page">
+        <section class="auth-card">
+            <p class="collection-label">SWATHEESH MENSWEAR</p>
+            <h1>ADMIN LOGIN</h1>
+            <form id="admin-login-form">
+                <label>Admin email<input type="email" id="admin-email" value="admin@gmail.com" required></label>
+                <label>Password<input type="password" id="admin-password" required></label>
+                <button class="checkout-button" type="submit">OPEN DASHBOARD</button>
+            </form>
+            <p id="admin-login-message" class="auth-message" aria-live="polite"></p>
+        </section>
+    </main>
+
+    <script>
+        const apiBase = window.location.protocol === "file:" ? "http://localhost:3000" : "";
+        const form = document.getElementById("admin-login-form");
+        const message = document.getElementById("admin-login-message");
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            try {
+                const response = await fetch(`${apiBase}/api/admin/login`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        email: document.getElementById("admin-email").value.trim(),
+                        password: document.getElementById("admin-password").value
+                    })
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || "Admin login failed.");
+                sessionStorage.setItem("swatheesh-admin-token", result.token);
+                window.location.href = "admin.html";
+            } catch (error) {
+                message.textContent = error.message;
+                message.className = "auth-message invalid-text";
+            }
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Bag | Swatheesh Menswear</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="logo">
+            <span>SWATHEESH</span>
+            <small>MENSWEAR</small>
+        </div>
+
+        <div class="nav-links">
+            <a href="index.html">Home</a>
+            <a href="shirts.html">Shirts</a>
+            <a href="tshirts.html">T-Shirts</a>
+            <a href="trousers.html">Trousers</a>
+            <a href="jackets.html">Jackets</a>
+        </div>
+
+        <div class="nav-icons">
+            <span>🔍</span>
+            <span>♡</span>
+            <span>🛍️</span>
+        </div>
+    </nav>
+
+    <main class="cart-page">
+        <p class="collection-label">SWATHEESH MENSWEAR</p>
+        <h1>YOUR BAG</h1>
+        <div id="cart-items"></div>
+        <div class="cart-total" id="cart-total"></div>
+    </main>
+
+    <script src="script.js"></script>
+    <script>
+        const cartItems = document.getElementById("cart-items");
+        const cartTotal = document.getElementById("cart-total");
+
+        function renderCart() {
+            const cart = getCart();
+            cartItems.innerHTML = "";
+
+            if (cart.length === 0) {
+                cartItems.innerHTML = "<p>Your bag is empty.</p>";
+                cartTotal.innerHTML = "<a href=\"shirts.html\">CONTINUE SHOPPING</a>";
+                return;
+            }
+
+            let total = 0;
+            cart.forEach((item, index) => {
+                total += item.price * item.quantity;
+                cartItems.insertAdjacentHTML("beforeend", `
+                    <article class="cart-item">
+                        <img src="${item.image}" alt="${item.name}">
+                        <div>
+                            <h3>${item.name}</h3>
+                            <p>₹${item.price} x ${item.quantity}</p>
+                            <button class="quantity-button" data-index="${index}" data-action="decrease">-</button>
+                            <button class="quantity-button" data-index="${index}" data-action="increase">+</button>
+                            <button class="remove-button" data-index="${index}">REMOVE</button>
+                        </div>
+                        <strong>₹${item.price * item.quantity}</strong>
+                    </article>
+                `);
+            });
+
+            cartTotal.innerHTML = `
+                <h2>Total: ₹${total}</h2>
+                <button class="checkout-button">BUY NOW</button>
+            `;
+
+            cartTotal.querySelector(".checkout-button").addEventListener("click", () => {
+                window.location.href = "checkout.html";
+            });
+
+            document.querySelectorAll(".quantity-button").forEach((button) => {
+                button.addEventListener("click", () => changeQuantity(button));
+            });
+            document.querySelectorAll(".remove-button").forEach((button) => {
+                button.addEventListener("click", () => removeItem(button));
+            });
+        }
+
+        function changeQuantity(button) {
+            const cart = getCart();
+            const item = cart[button.dataset.index];
+            item.quantity += button.dataset.action === "increase" ? 1 : -1;
+            if (item.quantity < 1) cart.splice(button.dataset.index, 1);
+            saveCart(cart);
+            updateCartCount();
+            renderCart();
+        }
+
+        function removeItem(button) {
+            const cart = getCart();
+            cart.splice(button.dataset.index, 1);
+            saveCart(cart);
+            updateCartCount();
+            renderCart();
+        }
+
+        renderCart();
+    </script>
+</body>
+
+</html>

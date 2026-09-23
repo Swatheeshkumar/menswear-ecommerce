@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swatheesh Menswear</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="home-page">
+
+    <nav class="navbar">
+
+    <div class="logo">
+        <span>SWATHEESH</span>
+        <small>MENSWEAR</small>
+    </div>
+
+    <div class="nav-links">
+        <a href="#">Home</a>
+        <a href="collections.html">Collections</a>
+        <a href="#">About</a>
+        <a href="auth.html">Account</a>
+    </div>
+
+    <div class="nav-icons">
+        <span>🔍</span>
+        <span>♡</span>
+        <span>🛍️</span>
+    </div>
+
+</nav>
+<section class="hero">
+
+    <div class="hero-content">
+        <p class="subtitle">THE NEW COLLECTION</p>
+
+        <h1>DEFINE<br>YOUR PRESENCE.</h1>
+
+        <p class="description">
+            Modern menswear crafted for confidence.
+        </p>
+
+        <button>EXPLORE COLLECTION</button>
+    </div>
+
+</section>
+<section class="categories" id="collections">
+
+    <div class="section-title">
+        <p>EXPLORE</p>
+        <h2>SHOP BY CATEGORY</h2>
+    </div>
+
+    <div class="category-grid" id="homepage-categories">
+
+        <div class="category-card">
+            <a class="category-image shirts" href="shirts.html" aria-label="View shirts"></a>
+            <h3>SHIRTS</h3>
+            <a href="shirts.html">SHOP NOW →</a>
+        </div>
+
+        <div class="category-card">
+            <a class="category-image tshirts" href="tshirts.html" aria-label="View t-shirts"></a>
+            <h3>T-SHIRTS</h3>
+            <a href="tshirts.html">SHOP NOW →</a>
+        </div>
+
+        <div class="category-card">
+            <a class="category-image trousers" href="trousers.html" aria-label="View trousers"></a>
+            <h3>TROUSERS</h3>
+            <a href="trousers.html">SHOP NOW →</a>
+        </div>
+
+        <div class="category-card">
+            <a class="category-image jackets" href="jackets.html" aria-label="View jackets"></a>
+            <h3>JACKETS</h3>
+            <a href="jackets.html">SHOP NOW →</a>
+        </div>
+
+        <div class="category-card">
+            <a class="category-image accessories" href="accessories.html" aria-label="View accessories"></a>
+            <h3>ACCESSORIES</h3>
+            <a href="accessories.html">SHOP NOW →</a>
+        </div>
+
+    </div>
+
+</section>
+<script src="script.js"></script>
+<script>
+    const categoryApiBase = window.location.protocol === "file:" ? "http://localhost:3000" : "";
+    const categoryGrid = document.getElementById("homepage-categories");
+
+    fetch(`${categoryApiBase}/api/categories`)
+        .then((response) => response.json())
+        .then((categories) => {
+            const homepageCategories = categories.some((category) => category.id === "accessories")
+                ? categories
+                : [...categories, { id: "accessories", name: "Accessories", image: "accessories.jpg", page: "accessories.html", enabled: true }];
+            categoryGrid.innerHTML = homepageCategories.filter((category) => category.enabled).map((category) => `
+                <div class="category-card">
+                    <a class="category-image" style="background-image: url('${category.image}')" href="${category.page}" aria-label="View ${category.name}"></a>
+                    <h3>${category.name.toUpperCase()}</h3>
+                    <a href="${category.page}">SHOP NOW →</a>
+                </div>
+            `).join("");
+        })
+        .catch(() => {});
+</script>
+</body>
+</html>

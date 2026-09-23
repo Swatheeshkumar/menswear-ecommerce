@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Products | Swatheesh Menswear</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="logo">
+            <span>SWATHEESH</span>
+            <small>ADMIN</small>
+        </div>
+        <div class="nav-links">
+            <a href="index.html">Storefront</a>
+            <a href="collections.html">Collections</a>
+        </div>
+    </nav>
+
+    <main class="admin-page">
+        <div class="admin-tabs">
+            <button class="admin-tab active" type="button" data-view="product-view">PRODUCT MANAGEMENT</button>
+            <button class="admin-tab" type="button" data-view="order-view">ORDER MANAGEMENT</button>
+        </div>
+
+        <section class="admin-view active" id="product-view">
+        <div class="admin-panel">
+            <p class="collection-label">PRODUCT MANAGEMENT</p>
+            <h1 id="product-form-title">ADD PRODUCT</h1>
+            <form id="product-form">
+                <input type="hidden" name="id" id="product-id">
+                <label>Product name<input name="name" required></label>
+                <label>Category<input name="category" placeholder="shirts" required></label>
+                <label>Price<input name="price" type="number" min="0" required></label>
+                <label>Stock quantity<input name="stock" type="number" min="0" step="1" required></label>
+                <label>Image filename<input name="image" placeholder="shirts 1.jpg" required></label>
+                <div class="extra-fields-heading">
+                    <strong>EXTRA FIELDS</strong>
+                    <button class="admin-action" type="button" id="add-extra-field">+ ADD FIELD</button>
+                </div>
+                <div id="extra-fields"></div>
+                <button class="checkout-button" type="submit">SAVE PRODUCT</button>
+                <button class="admin-cancel" type="button" id="cancel-edit" hidden>CANCEL EDIT</button>
+            </form>
+            <p id="admin-message" aria-live="polite"></p>
+        </div>
+
+        <div class="admin-panel">
+            <p class="collection-label">DATABASE</p>
+            <h2>SAVED PRODUCTS</h2>
+            <div id="admin-products"></div>
+        </div>
+
+        <div class="admin-panel admin-category-panel">
+            <p class="collection-label">STOREFRONT</p>
+            <h2>HOMEPAGE CATEGORIES</h2>
+            <div id="admin-categories"></div>
+        </div>
+        </section>
+
+        <section class="admin-view" id="order-view">
+        <div class="admin-panel admin-orders">
+            <p class="collection-label">ORDER MANAGEMENT</p>
+            <h2>RECENT ORDERS</h2>
+            <div id="admin-orders"></div>
+        </div>
+        </section>
+    </main>
+
+    <script>
+        const adminToken = sessionStorage.getItem("swatheesh-admin-token");
+        if (!adminToken) window.location.href = "admin-login.html";
+
+        const apiBase = window.location.protocol === "file:" ? "http://localhost:3000" : "";
+        const adminHeaders = { Authorization: `Bearer ${adminToken}` };
+        const form = document.getElementById("product-form");
+        const message = document.getElementById("admin-message");
+        const productsContainer = document.getElementById("admin-products");
+        const ordersContainer = document.getElementById("admin-orders");
+        const formTitle = document.getElementById("product-form-title");
+        const productId = document.getElementById("product-id");
+        const cancelEdit = document.getElementById("cancel-edit");
+        const categoriesContainer = document.getElementById("admin-categories");
+        const extraFieldsContainer = document.getElementById("extra-fields");
+
+        async function readJson(response) {
+            const text = await response.text();
+            try {
+                return text ? JSON.parse(text) : {};
+            } catch {
+                throw new Error(`API returned an invalid response (${response.status}).`);
+            }
+        }
+
+        function addExtraField(label = "", value = "") {
+            const row = document.createElement("div");
+            row.className = "extra-field-row";
+            row.innerHTML = `
+                <input class="extra-field-label" placeholder="Field name" value="${label}">
+                <input class="extra-field-value" placeholder="Value" value="${value}">
+                <button class="admin-action delete-extra-field" type="button">REMOVE</button>
+            `;
+            row.querySelector(".delete-extra-field").addEventListener("click", () => row.remove());
+            extraFieldsContainer.appendChild(row);
+        }
+
+        function getExtraFields() {
+            return [...extraFieldsContainer.querySelectorAll(".extra-field-row")]
+                .map((row) => ({
+                    label: row.querySelector(".extra-field-label").value.trim(),
+                    value: row.querySelector(".extra-field-value").value.trim()
+                }))
+                .filter((field) => field.label && field.value);
+        }
+
+        document.getElementById("add-extra-field").addEventListener("click", () => addExtraField());
+
+        document.querySelectorAll(".admin-tab").forEach((tab) => {
+            tab.addEventListener("click", () => {
+                document.querySelectorAll(".admin-tab").forEach((item) => item.classList.remove("active"));
+                document.querySelectorAll(".admin-view").forEach((view) => view.classList.remove("active"));
+                tab.classList.add("active");
+                document.getElementById(tab.dataset.view).classList.add("active");
+            });
+        });
+
+        async function loadProducts() {
+            const response = await fetch(`${apiBase}/api/products`, { headers: adminHeaders });
+            const products = await readJson(response);
+            if (!response.ok) throw new Error(products.error || "Could not load products.");
+            productsContainer.innerHTML = products.length === 0
+                ? "<p>No products saved yet.</p>"
+                : products.map((product) => `
+                    <article class="admin-product">
+                        <div><strong>${product.name}</strong><span>₹${product.price} · ${product.category} · Stock: ${product.stock ?? "not set"}</span></div>
+                        <div><button class="admin-action edit-product" data-id="${product.id}">EDIT</button><button class="admin-action delete-product" data-id="${product.id}">DELETE</button></div>
+                    </article>
+                `).join("");
+
+            document.querySelectorAll(".edit-product").forEach((button) => {
+                button.addEventListener("click", () => startEdit(products.find((product) => product.id === button.dataset.id)));
+            });
+            document.querySelectorAll(".delete-product").forEach((button) => {
+                button.addEventListener("click", () => deleteProduct(button.dataset.id));
+            });
+        }
+
+        async function loadCategories() {
+            const response = await fetch(`${apiBase}/api/categories`);
+            const categories = await readJson(response);
+            if (!response.ok) throw new Error(categories.error || "Could not load categories.");
+            categoriesContainer.innerHTML = categories.map((category) => `
+                <article class="admin-category">
+                    <label><input type="checkbox" class="category-enabled" data-id="${category.id}" ${category.enabled ? "checked" : ""}> ${category.name}</label>
+                    <div class="category-image-field">
+                        <img class="category-preview" data-id="${category.id}" src="${category.image}" alt="${category.name} preview">
+                        <input class="category-file" data-id="${category.id}" type="file" accept="image/*" aria-label="Upload ${category.name} image">
+                        <input class="category-image-name" data-id="${category.id}" value="${category.image}" aria-label="${category.name} image filename">
+                    </div>
+                    <input class="category-page" data-id="${category.id}" value="${category.page}" aria-label="${category.name} page filename">
+                    <button class="admin-action save-category" data-id="${category.id}">SAVE</button>
+                </article>
+            `).join("");
+            document.querySelectorAll(".save-category").forEach((button) => button.addEventListener("click", () => saveCategory(button.dataset.id)));
+            document.querySelectorAll(".category-file").forEach((input) => input.addEventListener("change", () => {
+                const file = input.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.addEventListener("load", () => {
+                    document.querySelector(`.category-preview[data-id="${input.dataset.id}"]`).src = reader.result;
+                });
+                reader.readAsDataURL(file);
+            }));
+        }
+
+        async function saveCategory(id) {
+            const enabled = document.querySelector(`.category-enabled[data-id="${id}"]`).checked;
+            const imageInput = document.querySelector(`.category-image-name[data-id="${id}"]`);
+            const fileInput = document.querySelector(`.category-file[data-id="${id}"]`);
+            const image = fileInput.files[0] ? await readImageFile(fileInput.files[0]) : imageInput.value.trim();
+            const page = document.querySelector(`.category-page[data-id="${id}"]`).value.trim();
+            const category = { id, name: id === "tshirts" ? "T-Shirts" : id.charAt(0).toUpperCase() + id.slice(1), image, page, enabled };
+            const response = await fetch(`${apiBase}/api/categories`, {
+                method: "PUT",
+                headers: { ...adminHeaders, "Content-Type": "application/json" },
+                body: JSON.stringify(category)
+            });
+            const result = await readJson(response);
+            if (!response.ok) throw new Error(result.error || "Could not update category.");
+            message.textContent = response.ok ? "Homepage category updated." : "Could not update category.";
+            message.className = response.ok ? "valid-text" : "invalid-text";
+        }
+
+        function readImageFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.addEventListener("load", () => resolve(reader.result));
+                reader.addEventListener("error", reject);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function startEdit(product) {
+            productId.value = product.id;
+            form.name.value = product.name;
+            form.category.value = product.category;
+            form.price.value = product.price;
+            form.stock.value = product.stock ?? 0;
+            form.image.value = product.image;
+            extraFieldsContainer.innerHTML = "";
+            (product.extraFields || []).forEach((field) => addExtraField(field.label, field.value));
+            formTitle.textContent = "EDIT PRODUCT";
+            cancelEdit.hidden = false;
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+
+        function resetProductForm() {
+            form.reset();
+            productId.value = "";
+            extraFieldsContainer.innerHTML = "";
+            formTitle.textContent = "ADD PRODUCT";
+            cancelEdit.hidden = true;
+        }
+
+        async function deleteProduct(id) {
+            if (!window.confirm("Delete this product?")) return;
+            const response = await fetch(`${apiBase}/api/products?id=${encodeURIComponent(id)}`, {
+                method: "DELETE",
+                headers: adminHeaders
+            });
+            if (!response.ok) {
+                message.textContent = "Could not delete product.";
+                message.className = "invalid-text";
+                return;
+            }
+            message.textContent = "Product deleted.";
+            message.className = "valid-text";
+            await loadProducts();
+        }
+
+        cancelEdit.addEventListener("click", resetProductForm);
+
+        async function loadOrders() {
+            const response = await fetch(`${apiBase}/api/orders`, { headers: adminHeaders });
+            const orders = await readJson(response);
+            if (!response.ok) throw new Error(orders.error || "Could not load orders.");
+            ordersContainer.innerHTML = orders.length === 0
+                ? "<p>No orders saved yet.</p>"
+                : orders.slice().reverse().map((order) => `
+                    <article class="admin-order">
+                        <strong>${order.id}</strong>
+                        <span>₹${order.total} · ${order.status}</span>
+                        <span>${order.customer.name} · ${order.customer.phone}</span>
+                        <small>${order.customer.address}</small>
+                        <div class="admin-order-items">
+                            ${(order.items || []).map((item) => `
+                                <div class="admin-order-item">
+                                    <img src="${item.image || ""}" alt="${item.name || "Ordered product"}">
+                                    <span>${item.name || "Product"} · Qty: ${item.quantity || 1}</span>
+                                </div>
+                            `).join("")}
+                        </div>
+                    </article>
+                `).join("");
+        }
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const formData = new FormData(form);
+            const product = Object.fromEntries(formData.entries());
+            product.price = Number(product.price);
+            product.extraFields = getExtraFields();
+
+            try {
+                const isEditing = Boolean(product.id);
+                const response = await fetch(`${apiBase}/api/products`, {
+                    method: isEditing ? "PUT" : "POST",
+                    headers: { ...adminHeaders, "Content-Type": "application/json" },
+                    body: JSON.stringify(product)
+                });
+                const result = await readJson(response);
+                if (!response.ok) throw new Error(result.error || "Could not save product.");
+                message.textContent = "Product saved in database.";
+                message.className = "valid-text";
+                resetProductForm();
+                await loadProducts();
+            } catch (error) {
+                message.textContent = error.message;
+                message.className = "invalid-text";
+            }
+        });
+
+        Promise.all([loadProducts(), loadOrders(), loadCategories()]).catch(() => {
+            message.textContent = "Start the backend server before using admin tools.";
+            message.className = "invalid-text";
+        });
+    </script>
+</body>
+
+</html>

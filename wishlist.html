@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Wishlist | Swatheesh Menswear</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="logo">
+            <span>SWATHEESH</span>
+            <small>MENSWEAR</small>
+        </div>
+        <div class="nav-links">
+            <a href="index.html">Home</a>
+            <a href="collections.html">Collections</a>
+            <a href="shirts.html">Shirts</a>
+            <a href="tshirts.html">T-Shirts</a>
+            <a href="trousers.html">Trousers</a>
+            <a href="jackets.html">Jackets</a>
+        </div>
+        <div class="nav-icons">
+            <span>⌕</span>
+            <span>♡</span>
+            <span>▱</span>
+        </div>
+    </nav>
+
+    <main class="wishlist-page collection">
+        <p>SWATHEESH MENSWEAR</p>
+        <h1>YOUR WISHLIST</h1>
+        <div class="product-grid" id="wishlist-items"></div>
+    </main>
+
+    <script src="script.js"></script>
+    <script>
+        const wishlistItems = document.getElementById("wishlist-items");
+        const wishlist = getWishlist();
+
+        if (wishlist.length === 0) {
+            wishlistItems.innerHTML = "<p class=\"empty-state\">Your wishlist is empty.</p>";
+        } else {
+            wishlist.forEach((item) => {
+                wishlistItems.insertAdjacentHTML("beforeend", `
+                    <article class="product-card">
+                        <div class="product-image">
+                            <a href="product.html"><img src="${item.image}" alt="${item.name}"></a>
+                        </div>
+                        <div class="product-info">
+                            <h3>${item.name}</h3>
+                            <p>₹${item.price}</p>
+                            <button class="remove-wishlist" data-name="${item.name}">REMOVE</button>
+                        </div>
+                    </article>
+                `);
+            });
+
+            document.querySelectorAll(".remove-wishlist").forEach((button) => {
+                button.addEventListener("click", () => {
+                    const updatedWishlist = getWishlist().filter((item) => item.name !== button.dataset.name);
+                    saveWishlist(updatedWishlist);
+                    window.location.reload();
+                });
+            });
+        }
+    </script>
+</body>
+
+</html>

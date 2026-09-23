@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout | Swatheesh Menswear</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="logo">
+            <span>SWATHEESH</span>
+            <small>MENSWEAR</small>
+        </div>
+        <div class="nav-links">
+            <a href="index.html">Home</a>
+            <a href="shirts.html">Shirts</a>
+            <a href="tshirts.html">T-Shirts</a>
+            <a href="trousers.html">Trousers</a>
+            <a href="jackets.html">Jackets</a>
+        </div>
+        <div class="nav-icons">
+            <span>🔍</span>
+            <span>♡</span>
+            <span>🛍️</span>
+        </div>
+    </nav>
+
+    <main class="checkout-page">
+        <section>
+            <p class="collection-label">SWATHEESH MENSWEAR</p>
+            <h1>CHECKOUT</h1>
+            <form id="checkout-form">
+                <label>
+                    Full name
+                    <input type="text" name="name" required>
+                </label>
+                <label>
+                    Email
+                    <input type="email" id="email" name="email" required>
+                    <small class="field-message" id="email-message"></small>
+                </label>
+                <label>
+                    Phone number
+                    <input type="tel" id="phone" name="phone" inputmode="numeric" maxlength="10" pattern="[0-9]{10}" required>
+                    <small class="field-message" id="phone-message"></small>
+                </label>
+                <label>
+                    Delivery address
+                    <textarea id="address" name="address" rows="4" minlength="10" required></textarea>
+                    <small class="field-message" id="address-message"></small>
+                </label>
+                <button class="checkout-button" type="submit">PLACE ORDER</button>
+            </form>
+            <p id="checkout-message" aria-live="polite"></p>
+            <section class="order-success" id="order-success" hidden>
+                <div class="success-icon">✓</div>
+                <h2>ORDER CONFIRMED</h2>
+                <p>Thank you for shopping with Swatheesh Menswear.</p>
+                <div class="order-images" id="order-images"></div>
+                <p id="order-id"></p>
+                <p id="delivery-summary"></p>
+                <a class="checkout-button" href="index.html">CONTINUE SHOPPING</a>
+            </section>
+        </section>
+        <aside class="checkout-summary">
+            <h2>ORDER SUMMARY</h2>
+            <div id="checkout-items"></div>
+            <h2 id="checkout-total"></h2>
+        </aside>
+    </main>
+
+    <script src="script.js"></script>
+    <script>
+        const checkoutItems = document.getElementById("checkout-items");
+        const checkoutTotal = document.getElementById("checkout-total");
+        const orderImages = document.getElementById("order-images");
+        const checkoutCart = getCart();
+        const apiBase = window.location.protocol === "file:" ? "http://localhost:3000" : "";
+        let checkoutAmount = 0;
+
+        checkoutCart.forEach((item) => {
+            checkoutAmount += item.price * item.quantity;
+            checkoutItems.insertAdjacentHTML("beforeend", `<p>${item.name} x ${item.quantity}<br>₹${item.price * item.quantity}</p>`);
+            orderImages.insertAdjacentHTML("beforeend", `<img src="${item.image}" alt="${item.name}">`);
+        });
+
+        checkoutTotal.textContent = `Total: ₹${checkoutAmount}`;
+        if (checkoutCart.length === 0) {
+            document.getElementById("checkout-message").textContent = "Your bag is empty. Add a product before placing an order.";
+            document.querySelector('button[type="submit"]').disabled = true;
+        }
+
+        const nameInput = document.querySelector('input[name="name"]');
+        const emailInput = document.getElementById("email");
+        const phoneInput = document.getElementById("phone");
+        const addressInput = document.getElementById("address");
+        const emailMessage = document.getElementById("email-message");
+        const phoneMessage = document.getElementById("phone-message");
+        const addressMessage = document.getElementById("address-message");
+        const submitButton = document.querySelector('#checkout-form button[type="submit"]');
+
+        async function readOrderResponse(response) {
+            const text = await response.text();
+            try {
+                return text ? JSON.parse(text) : {};
+            } catch {
+                throw new Error(`Order API returned an invalid response (${response.status}).`);
+            }
+        }
+
+        const setFieldState = (field, valid, messageElement, successText, errorText) => {
+            field.classList.toggle("valid-field", valid);
+            field.classList.toggle("invalid-field", field.value.length > 0 && !valid);
+            if (messageElement) {
+                messageElement.textContent = field.value.length === 0 ? "" : valid ? successText : errorText;
+                messageElement.className = `field-message ${valid ? "valid-text" : "invalid-text"}`;
+            }
+        };
+
+        nameInput.addEventListener("input", () => {
+            const isValidName = nameInput.value.trim().length >= 2;
+            nameInput.classList.toggle("valid-field", isValidName);
+            nameInput.classList.toggle("invalid-field", nameInput.value.length > 0 && !isValidName);
+        });
+
+        emailInput.addEventListener("input", () => {
+            const isGmail = /^[^\s@]+@gmail\.com$/i.test(emailInput.value);
+            setFieldState(emailInput, isGmail, emailMessage, "Gmail accepted", "Only Gmail address is accepted");
+        });
+
+        phoneInput.addEventListener("input", () => {
+            phoneInput.value = phoneInput.value.replace(/\D/g, "").slice(0, 10);
+            const isValidPhone = phoneInput.value.length === 10;
+            setFieldState(phoneInput, isValidPhone, phoneMessage, "Phone number accepted", "Enter 10 numbers");
+        });
+
+        addressInput.addEventListener("input", () => {
+            const isValidAddress = addressInput.value.trim().length >= 10;
+            setFieldState(addressInput, isValidAddress, addressMessage, "Address looks good", "Add a complete delivery address");
+        });
+
+        document.getElementById("checkout-form").addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const isValidName = nameInput.value.trim().length >= 2;
+            const isGmail = /^[^\s@]+@gmail\.com$/i.test(emailInput.value);
+            const isValidPhone = /^[0-9]{10}$/.test(phoneInput.value);
+            const isValidAddress = addressInput.value.trim().length >= 10;
+
+            if (!isValidName || !isGmail || !isValidPhone || !isValidAddress) {
+                const firstInvalid = !isValidName ? nameInput : !isGmail ? emailInput : !isValidPhone ? phoneInput : addressInput;
+                firstInvalid.focus();
+                const checkoutMessage = document.getElementById("checkout-message");
+                checkoutMessage.textContent = "Please enter a valid name, Gmail, 10-digit phone number, and complete delivery address.";
+                checkoutMessage.className = "invalid-text";
+                return;
+            }
+
+            const form = event.currentTarget;
+            const formData = new FormData(form);
+            const checkoutMessage = document.getElementById("checkout-message");
+
+            if (checkoutCart.length === 0) {
+                checkoutMessage.textContent = "Your bag is empty.";
+                return;
+            }
+
+            try {
+                submitButton.disabled = true;
+                submitButton.textContent = "PLACING ORDER...";
+                const orderRequest = {
+                    customer: {
+                        name: formData.get("name"),
+                        email: formData.get("email"),
+                        phone: formData.get("phone"),
+                        address: formData.get("address")
+                    },
+                    items: checkoutCart,
+                    total: checkoutAmount
+                };
+                const response = await fetch(`${apiBase}/api/orders`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(orderRequest)
+                });
+                const order = await readOrderResponse(response);
+                if (!response.ok) throw new Error(order.error || "Could not place order.");
+
+                checkoutMessage.textContent = "Order placed successfully.";
+                document.getElementById("order-id").textContent = `Order ID: ${order.id}`;
+                document.getElementById("delivery-summary").textContent = `Delivering to ${formData.get("name")} at ${formData.get("address")}`;
+                form.hidden = true;
+                document.querySelector(".checkout-summary").hidden = true;
+                checkoutMessage.hidden = true;
+                document.getElementById("order-success").hidden = false;
+                localStorage.removeItem("swatheesh-cart");
+            } catch (error) {
+                submitButton.disabled = false;
+                submitButton.textContent = "PLACE ORDER";
+                checkoutMessage.textContent = error.message || "Something went wrong. Please try again.";
+                checkoutMessage.className = "invalid-text";
+            }
+        });
+    </script>
+</body>
+
+</html>

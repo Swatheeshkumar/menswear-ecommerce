@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account | Swatheesh Menswear</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="logo">
+            <span>SWATHEESH</span>
+            <small>MENSWEAR</small>
+        </div>
+        <div class="nav-links">
+            <a href="index.html">Home</a>
+            <a href="shirts.html">Shirts</a>
+            <a href="tshirts.html">T-Shirts</a>
+            <a href="trousers.html">Trousers</a>
+            <a href="jackets.html">Jackets</a>
+        </div>
+        <div class="nav-icons">
+            <span>🔍</span>
+            <span>♡</span>
+            <span>🛍️</span>
+        </div>
+    </nav>
+
+    <main class="auth-page">
+        <section class="auth-card">
+            <p class="collection-label">SWATHEESH MENSWEAR</p>
+            <h1 id="auth-title">LOGIN</h1>
+            <p id="auth-message" class="auth-message" aria-live="polite"></p>
+
+            <form id="auth-form">
+                <label id="name-field" hidden>
+                    Full name
+                    <input type="text" id="name" autocomplete="name">
+                </label>
+                <label>
+                    Gmail address
+                    <input type="email" id="email" autocomplete="email" required>
+                </label>
+                <label>
+                    Password
+                    <input type="password" id="password" minlength="6" autocomplete="current-password" required>
+                </label>
+                <button class="checkout-button" type="submit" id="auth-submit">LOGIN</button>
+            </form>
+
+            <button class="auth-switch" type="button" id="auth-switch">Create a new account</button>
+        </section>
+    </main>
+
+    <script>
+        const authForm = document.getElementById("auth-form");
+        const authTitle = document.getElementById("auth-title");
+        const authSubmit = document.getElementById("auth-submit");
+        const authSwitch = document.getElementById("auth-switch");
+        const nameField = document.getElementById("name-field");
+        const authMessage = document.getElementById("auth-message");
+        const apiBase = window.location.protocol === "file:" ? "http://localhost:3000" : "";
+        let isSignup = false;
+
+        function updateAuthMode() {
+            authTitle.textContent = isSignup ? "CREATE ACCOUNT" : "LOGIN";
+            authSubmit.textContent = isSignup ? "CREATE ACCOUNT" : "LOGIN";
+            authSwitch.textContent = isSignup ? "Already have an account? Login" : "Create a new account";
+            nameField.hidden = !isSignup;
+            document.getElementById("name").required = isSignup;
+            document.getElementById("password").autocomplete = isSignup ? "new-password" : "current-password";
+            authMessage.textContent = "";
+        }
+
+        authSwitch.addEventListener("click", () => {
+            isSignup = !isSignup;
+            updateAuthMode();
+        });
+
+        authForm.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const email = document.getElementById("email").value.trim().toLowerCase();
+            const password = document.getElementById("password").value;
+            const gmailPattern = /^[^\s@]+@gmail\.com$/i;
+
+            if (!gmailPattern.test(email)) {
+                authMessage.textContent = "Please use a valid Gmail address.";
+                authMessage.className = "auth-message invalid-text";
+                return;
+            }
+
+            const endpoint = `${apiBase}${isSignup ? "/api/users/register" : "/api/users/login"}`;
+            const body = { email, password };
+            if (isSignup) body.name = document.getElementById("name").value.trim();
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(body)
+                });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || "Account request failed.");
+
+                if (isSignup) {
+                    isSignup = false;
+                    updateAuthMode();
+                    authMessage.textContent = "Account created in database. Login now.";
+                    authMessage.className = "auth-message valid-text";
+                    authForm.reset();
+                    return;
+                }
+
+                localStorage.setItem("swatheesh-user", JSON.stringify(result));
+                window.location.href = "index.html";
+            } catch (error) {
+                authMessage.textContent = error.message;
+                authMessage.className = "auth-message invalid-text";
+            }
+        });
+    </script>
+</body>
+
+</html>
